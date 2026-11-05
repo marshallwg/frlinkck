@@ -32,29 +32,57 @@
   question 2 as "no". The using-only rows have no home in the current frame, so
   such a variable could only ever hold 1 and 3 — the same partial picture
   `frlink` already gives. Reconsider only if someone wants it for `tabulate`.
-- **The table prints before `assert()` fires**, so a failure arrives with the
-  numbers that explain it.
+- **The table prints and `r()` is stored before `assert()` fires**, so a
+  failure arrives with the numbers that explain it and a caller using `capture`
+  can still read the counts. Verified by test: the returns are discarded if
+  they are set after the `exit`.
+- **`assert()` abbreviations are enumerated, not computed.** `merge` accepts
+  `mat`, `mas` and `us` and rejects `ma` as ambiguous between `match` and
+  `master`. An earlier draft computed a two-character minimum, which accepted
+  `ma` and set the match *and* master flags from one ambiguous word — silently
+  permitting a disposition the user had not asked for.
 - **Matched is reported twice**, once per side, because the counts differ under
   `m:1`.
 
 ## Open
 
-1. **`framerge`-created links.** `framerge 1:1` and `m:1` are documented
-   aliases of `frlink`, so their link variables should carry the same
-   characteristics and work unchanged. Its `1:m` and `m:m` links have no
-   `frlink` equivalent and probably encode something different. Untested in
-   both cases.
-2. **Genuinely stale links.** The guard against a link variable addressing
-   rows outside the linked frame is written (in the Mata helper) but not
-   exercised by a test. Needs a fixture that adds and deletes observations in
-   the linked frame after linking.
-3. **Large-data behavior.** The approach is one pass over the master frame's
-   link variable plus one allocation the size of the linked frame, so it should
-   be linear and cheap. Unmeasured.
-4. **Distribution.** No `.pkg` or `stata.toc` yet, deliberately: the syntax
+1. **The Mata bounds check may be dead code.** The helper refuses when a link
+   value addresses a row outside the linked frame. Both broken-linkage tests
+   exit 459 from the `frlink describe` guard before reaching it, so it is a
+   backstop behind an earlier guard and no test reaches it. Either find a
+   linkage that defeats `frlink describe` and keep it, or delete it as
+   defensive programming for a case that cannot arise. Not resolved.
+2. **`framerge 1:m` and `m:m` links.** Untestable rather than untested: both
+   paths fail inside `framerge` itself with "command confirm_var_cnt is
+   unrecognized". That helper ships in neither the Stata Journal distribution
+   (sj25-2/dm0115) nor the GitHub repository. Revisit if it is ever fixed.
+3. **Distribution.** No `.pkg` or `stata.toc` yet, deliberately: the syntax
    should settle before anything is installable by URL.
-5. **Command name.** `frlinkck` stands. `frlinkchk` and `frlinkreport` were the
+4. **Command name.** `frlinkck` stands. `frlinkchk` and `frlinkreport` were the
    alternatives; `frlink2` is rejected for the reasons in the README.
+
+## Verified against framerge
+
+`framerge m:1` and `framerge 1:1` write link variables carrying the same
+`frlink_*` characteristics as `frlink`, and `frlinkck` reports on them with no
+change. Measured on the same fixture, `framerge m:1` gave the identical
+3 / 5 / 27 / 15 split. Confirmed with framerge installed from
+sj25-2/dm0115 into a scratch ado directory on 2026-11-05.
+
+## Measured performance
+
+One pass over the master frame's link variable plus one allocation the size of
+the linked frame. Master-to-using ratio 5:1, 10% of master rows matching
+nothing, on this machine:
+
+| master rows | using rows | `frlink` | `frlinkck` |
+| ----------- | ---------- | -------- | ---------- |
+| 100,000     | 20,000     | 0.08s    | 0.01s      |
+| 1,000,000   | 200,000    | 0.54s    | 0.02s      |
+| 5,000,000   | 1,000,000  | 3.47s    | 0.11s      |
+
+Linear in the master frame, and 2-3% of the cost of creating the linkage in the
+first place. There is no performance reason to make the check optional.
 
 ## Record of a disproved claim
 

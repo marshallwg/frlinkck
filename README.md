@@ -55,7 +55,7 @@ link variable's characteristics.
 
 | Option                  | Behavior                                                   |
 | ----------------------- | ---------------------------------------------------------- |
-| `assert(keywords)`      | Exit with code 9 unless every observation falls in one of the dispositions listed. Keywords are `merge`'s: `master`, `using`, `match`. |
+| `assert(keywords)`      | Exit with code 9 unless every observation falls in one of the dispositions listed. Keywords and abbreviations are `merge`'s: `match`/`mat`, `master`/`mas`, `using`/`us`. |
 | `nomatchmaster(name)`   | New frame holding the current frame's unmatched records     |
 | `nomatchusing(name)`    | New frame holding the linked frame's unmatched records       |
 | `nosummary`             | Suppress the table; still assert, still store `r()`          |
@@ -96,12 +96,25 @@ test/certify.do   certification script
 DESIGN.md         settled decisions and open questions
 ```
 
+## Performance
+
+Master-to-using ratio 5:1, 10% of master rows matching nothing:
+
+| master rows | using rows | `frlink` | `frlinkck` |
+| ----------- | ---------- | -------- | ---------- |
+| 100,000     | 20,000     | 0.08s    | 0.01s      |
+| 1,000,000   | 200,000    | 0.54s    | 0.02s      |
+| 5,000,000   | 1,000,000  | 3.47s    | 0.11s      |
+
+Linear in the master frame, and 2-3% of the cost of creating the linkage. There
+is no performance reason to skip the check.
+
 ## Installing
 
 Not yet distributed. For now, point Stata at a clone:
 
 ```stata
-adopath ++ "/path/to/frlinkck"
+adopath ++ "/path/to/frlinkck-ado"
 ```
 
 TODO: add a `.pkg` and `stata.toc` for `net install` once the syntax is settled.
@@ -112,18 +125,20 @@ TODO: add a `.pkg` and `stata.toc` for `net install` once the syntax is settled.
 /Applications/StataNow/StataMP.app/Contents/MacOS/stata-mp -b do test/certify.do
 ```
 
-Ten tests, all passing as of 2026-11-05. Every expected count is derived by
-construction rather than recorded from a previous run. Coverage: counts on a
+Fourteen tests, all passing as of 2026-11-05. Every expected count is derived
+by construction rather than recorded from a previous run. Coverage: counts on a
 fresh `m:1` link; that the rows identified are the right rows, not merely the
 right number of them; the hostile-sort case above; that no variable is left
-behind in either frame; `assert()` acceptance and rejection including bad
-keywords; a perfect `1:1` link; a link where nothing matches at all; multiple
-match variables; refusal on a variable that is not a link; refusal to overwrite
-an existing frame.
+behind in either frame; `assert()` acceptance and rejection, including every
+permitted abbreviation and the ambiguous `ma` that `merge` also rejects; that
+`r()` survives a failed assertion; a perfect `1:1` link; a link where nothing
+matches at all; multiple match variables; refusal on a variable that is not a
+link; refusal to overwrite an existing frame; and refusal on a linkage broken
+by deleting from or growing the linked frame.
 
-Not covered: a linkage genuinely broken by adding or deleting observations in
-the linked frame, where the command should refuse rather than report. The guard
-is written but untested.
+One guard remains unreached: the Mata helper refuses a link value that
+addresses a row outside the linked frame, but both broken-linkage tests are
+caught earlier by the `frlink describe` check. See `DESIGN.md`.
 
 ## Prior art
 
@@ -132,9 +147,12 @@ is written but untested.
   *Stata Journal* 25(2)) — adds `1:m` and `m:m` linkage plus a `get()`
   convenience layer, and is faster than `merge` on large data. It stores only
   `r(unmatched)`, which is the count `frlink` itself already returns, and offers
-  no using-frame count, no disposition table and no assert. Complementary rather
-  than overlapping: `framerge 1:1` and `m:1` are aliases of `frlink`, so
-  `frlinkck` should work on the links they create, though this is untested.
+  no using-frame count, no disposition table and no assert. Complementary
+  rather than overlapping: `framerge 1:1` and `m:1` write the same `frlink_*`
+  characteristics, and `frlinkck` reports on their links unchanged — tested.
+  Its `1:m` and `m:m` paths could not be tested, because both fail inside
+  `framerge` itself with "command confirm_var_cnt is unrecognized"; that helper
+  ships in neither the Stata Journal distribution nor the GitHub repository.
 
 The name `frlink2` was considered and rejected: it was `framerge`'s development
 name, it survives in that package's help file section markers, and it implies a

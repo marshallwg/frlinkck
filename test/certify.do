@@ -193,6 +193,84 @@ frame using_f: describe, varlist
 assert strpos("`r(varlist)'", "__") == 0
 display "PASS 10"
 
+* -----------------------------------------------------------------------------
+display _n "{hline 70}" _n "TEST 11: r() survives a failed assert()"
+* A caller that wraps frlinkck in -capture- must still be able to read the
+* counts in order to compose its own message.
+* -----------------------------------------------------------------------------
+setup
+capture frlinkck lnk, assert(match) nosummary
+assert _rc == 9
+assert r(N_master)      == 3
+assert r(N_using)       == 5
+assert r(N_match)       == 27
+assert r(N_match_using) == 15
+assert "`r(frame_using)'" == "using_f"
+display "PASS 11"
+
+* -----------------------------------------------------------------------------
+display _n "{hline 70}" _n "TEST 12: assert() abbreviations follow merge"
+* merge accepts mat/mas/us and rejects the ambiguous ma (match vs master).
+* Computing a minimum length instead of enumerating would accept ma and set
+* both flags, silently permitting two dispositions from one ambiguous word.
+* -----------------------------------------------------------------------------
+setup
+* Accepted abbreviations, spelled every permitted way.
+foreach kw in mat matc match {
+    capture frlinkck lnk, assert(`kw' master using) nosummary
+    assert _rc == 0
+}
+foreach kw in mas mast maste master {
+    capture frlinkck lnk, assert(match `kw' using) nosummary
+    assert _rc == 0
+}
+foreach kw in us usi usin using {
+    capture frlinkck lnk, assert(match master `kw') nosummary
+    assert _rc == 0
+}
+* Rejected: ambiguous or too short.
+foreach kw in m ma u mt mster {
+    capture frlinkck lnk, assert(`kw') nosummary
+    assert _rc == 198
+}
+* And the abbreviation must still bind to the right disposition: mas alone
+* permits master-only but not using-only, so this must fail.
+capture frlinkck lnk, assert(mat mas) nosummary
+assert _rc == 9
+display "PASS 12"
+
+* -----------------------------------------------------------------------------
+display _n "{hline 70}" _n "TEST 13: refuses a linkage broken by changing the using frame"
+* Dropping observations from the using frame leaves link values that address
+* rows that no longer exist, or rows holding different records.  frlinkck must
+* refuse rather than report.
+* -----------------------------------------------------------------------------
+setup
+* Delete most of the using frame, invalidating the stored signature.
+frame using_f: drop in 1/18
+capture frlinkck lnk, nosummary
+assert _rc != 0
+display "   rc on a broken linkage = `=_rc'"
+* No marker variable may be left behind by the refusal.
+frame using_f: describe, varlist
+assert strpos("`r(varlist)'", "__") == 0
+display "PASS 13"
+
+* -----------------------------------------------------------------------------
+display _n "{hline 70}" _n "TEST 14: refuses after the using frame gains observations"
+* -----------------------------------------------------------------------------
+setup
+frame using_f {
+    set obs 40
+    replace ukey = 500 + _n if missing(ukey)
+}
+capture frlinkck lnk, nosummary
+assert _rc != 0
+display "   rc after growth = `=_rc'"
+frame using_f: describe, varlist
+assert strpos("`r(varlist)'", "__") == 0
+display "PASS 14"
+
 display _n "{hline 70}"
 display "ALL TESTS PASSED"
 display "{hline 70}"

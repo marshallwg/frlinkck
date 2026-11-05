@@ -69,26 +69,36 @@ program define frlinkck, rclass
     local a_match  0
     if "`assert'" != "" {
         foreach kw of local assert {
-            local hit 0
-            if "`kw'" == substr("master", 1, max(2, length("`kw'"))) ///
-                & length("`kw'") >= 2 {
-                local a_master 1
-                local hit 1
-            }
-            if "`kw'" == substr("using", 1, max(2, length("`kw'"))) ///
-                & length("`kw'") >= 2 {
-                local a_using 1
-                local hit 1
-            }
-            if "`kw'" == substr("match", 1, max(2, length("`kw'"))) ///
-                & length("`kw'") >= 2 {
+            * The permitted abbreviations are merge's own, enumerated rather
+            * than computed.  Note that "ma" is NOT permitted: it is ambiguous
+            * between match and master, and merge rejects it for that reason.
+            * Computing minimum lengths instead of listing them would silently
+            * set both flags on an ambiguous word.
+            local ok 0
+            if inlist("`kw'", "mat", "matc", "match") {
                 local a_match 1
-                local hit 1
+                local ok 1
             }
-            if !`hit' {
-                display as error ///
-                    "assert(): {bf:`kw'} not allowed; expected " ///
-                    "{bf:master}, {bf:using} or {bf:match}"
+            if inlist("`kw'", "mas", "mast", "maste", "master") {
+                local a_master 1
+                local ok 1
+            }
+            if inlist("`kw'", "us", "usi", "usin", "using") {
+                local a_using 1
+                local ok 1
+            }
+            if !`ok' {
+                if inlist("`kw'", "m", "ma") {
+                    display as error ///
+                        "assert(): {bf:`kw'} is ambiguous between " ///
+                        "{bf:match} and {bf:master}; use {bf:mat} or {bf:mas}"
+                }
+                else {
+                    display as error ///
+                        "assert(): {bf:`kw'} not allowed; expected " ///
+                        "{bf:match}, {bf:master} or {bf:using} " ///
+                        "(abbreviable to {bf:mat}, {bf:mas}, {bf:us})"
+                }
                 exit 198
             }
         }
@@ -198,7 +208,23 @@ program define frlinkck, rclass
     }
 
     * -------------------------------------------------------------------------
-    * 8. Assert last, so the user sees the table that explains the failure.
+    * 8. Returned results.  Stored BEFORE assert() fires, so that a caller using
+    *    -capture- can read the counts and compose its own message.
+    * -------------------------------------------------------------------------
+    return scalar N_master        = `n_master'
+    return scalar N_using         = `n_using'
+    return scalar N_match         = `n_match'
+    return scalar N_match_using   = `n_match_using'
+    return scalar N_total_master  = `n_total_master'
+    return scalar N_total_using   = `n_total_using'
+    return local  match_type      "`mtype'"
+    return local  frame_master    "`frame1'"
+    return local  frame_using     "`frame2'"
+    return local  matchvars_master "`mvars1'"
+    return local  matchvars_using  "`mvars2'"
+    * -------------------------------------------------------------------------
+    * 9. Assert last, so the user sees the table and the stored results that
+    *    explain the failure.
     * -------------------------------------------------------------------------
     if "`assert'" != "" {
         local bad 0
@@ -222,20 +248,6 @@ program define frlinkck, rclass
         }
     }
 
-    * -------------------------------------------------------------------------
-    * 9. Returned results.
-    * -------------------------------------------------------------------------
-    return scalar N_master        = `n_master'
-    return scalar N_using         = `n_using'
-    return scalar N_match         = `n_match'
-    return scalar N_match_using   = `n_match_using'
-    return scalar N_total_master  = `n_total_master'
-    return scalar N_total_using   = `n_total_using'
-    return local  match_type      "`mtype'"
-    return local  frame_master    "`frame1'"
-    return local  frame_using     "`frame2'"
-    return local  matchvars_master "`mvars1'"
-    return local  matchvars_using  "`mvars2'"
 end
 
 * =============================================================================

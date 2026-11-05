@@ -25,8 +25,8 @@
 {synopthdr}
 {synoptline}
 {synopt :{opt assert(keywords)}}error and exit unless every observation falls
-in one of the dispositions listed; {it:keywords} are {opt master},
-{opt using} and {opt match}{p_end}
+in one of the dispositions listed; {it:keywords} are {opt mas:ter},
+{opt us:ing} and {opt mat:ch}{p_end}
 {synopt :{opt nomatchm:aster(newframe)}}put the unmatched observations of the
 master frame into {it:newframe}{p_end}
 {synopt :{opt nomatchu:sing(newframe)}}put the unmatched observations of the
@@ -76,8 +76,12 @@ the second counts distinct observations in the linked frame that were matched.
 {opt assert(keywords)} specifies the dispositions you expect. Any observation
 outside them is an error and {cmd:frlinkck} exits with return code 9. The
 keywords and their meaning are {helpb merge}'s: {opt master}, {opt using} and
-{opt match}, specified in any combination and any order. Keywords may be
-abbreviated to two characters.
+{opt match}, specified in any combination and any order.
+
+{pmore}
+The permitted abbreviations are also {cmd:merge}'s: {cmd:match} to {cmd:mat},
+{cmd:master} to {cmd:mas}, {cmd:using} to {cmd:us}. {cmd:ma} is not permitted,
+being ambiguous between {cmd:match} and {cmd:master}.
 
 {pmore}
 {cmd:assert(match)} is the usual claim: every observation in both frames
@@ -156,7 +160,10 @@ either frame. It does re-sort the linked frame, as any use of the linkage does.
 {marker results}{...}
 {title:Stored results}
 
-{pstd}{cmd:frlinkck} stores the following in {cmd:r()}:
+{pstd}
+{cmd:frlinkck} stores the following in {cmd:r()}. The results are stored before
+{cmd:assert()} is evaluated, so they remain readable after a failed assertion
+caught with {helpb capture}.
 
 {synoptset 24 tabbed}{...}
 {p2col 5 24 28 2: Scalars}{p_end}
