@@ -1,0 +1,45 @@
+# ---- Data (excluded by default; un-ignore deliberately) ----
+data/
+*.dta
+*.rds
+*.RData
+*.sav
+*.por
+*.csv
+*.xlsx
+*.xls
+
+# ---- Secrets ----
+.env
+.env.*
+*.pem
+*.key
+credentials*
+*secret*
+*token*
+
+# ---- R ----
+.Rhistory
+.Rapp.history
+.RData
+.Ruserdata
+.Rproj.user/
+renv/library/
+renv/staging/
+
+# ---- Stata ----
+*.smcl
+*.log
+*.stpr
+
+# ---- Quarto ----
+/.quarto/
+*_files/
+*_cache/
+/_site/
+/_book/
+
+# ---- macOS / editor ----
+.DS_Store
+.Rproj.user
+.vscode/
