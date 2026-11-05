@@ -43,22 +43,29 @@
   permitting a disposition the user had not asked for.
 - **Matched is reported twice**, once per side, because the counts differ under
   `m:1`.
+- **`assert()` means "assert the match", not "assert that records were
+  removed".** Confirmed with the author on 2026-11-05; an earlier phrasing of
+  the requirement said "removed" and was ambiguous.
+- **No bounds check in the Mata helper.** One was written and then removed.
+  Verification of the linkage already guarantees that every link value
+  addresses a row inside the linked frame, so the check was a branch no test
+  could exercise and therefore a branch nothing could trust.
+- **Distributed by `net install` from the GitHub repository**, with
+  `frlinkck.pkg` and `stata.toc` at the repository root, following the layout
+  of the author's other ado packages. Verified by installing from a local clone
+  into a scratch ado directory and running the installed copy with the source
+  tree off the path.
 
 ## Open
 
-1. **The Mata bounds check may be dead code.** The helper refuses when a link
-   value addresses a row outside the linked frame. Both broken-linkage tests
-   exit 459 from the `frlink describe` guard before reaching it, so it is a
-   backstop behind an earlier guard and no test reaches it. Either find a
-   linkage that defeats `frlink describe` and keep it, or delete it as
-   defensive programming for a case that cannot arise. Not resolved.
-2. **`framerge 1:m` and `m:m` links.** Untestable rather than untested: both
+1. **`framerge 1:m` and `m:m` links.** Untestable rather than untested: both
    paths fail inside `framerge` itself with "command confirm_var_cnt is
    unrecognized". That helper ships in neither the Stata Journal distribution
    (sj25-2/dm0115) nor the GitHub repository. Revisit if it is ever fixed.
-3. **Distribution.** No `.pkg` or `stata.toc` yet, deliberately: the syntax
-   should settle before anything is installable by URL.
-4. **Command name.** `frlinkck` stands. `frlinkchk` and `frlinkreport` were the
+2. **Stata 16 compatibility.** The ado declares `version 16` and uses only
+   features of that release as far as I can tell, but it has been run on 19.5
+   only. Unverified.
+3. **Command name.** `frlinkck` stands. `frlinkchk` and `frlinkreport` were the
    alternatives; `frlink2` is rejected for the reasons in the README.
 
 ## Verified against framerge

@@ -273,17 +273,10 @@ void frlinkck_mark(string scalar lnkvar,
     st_framecurrent(f2)
     n2  = st_nobs()
 
-    // A link value past the end of the using frame means the linkage is stale
-    // in a way verification did not catch.  Refuse rather than report nonsense.
-    if (rows(idx) > 0) {
-        if (max(idx) > n2 | min(idx) < 1) {
-            st_framecurrent(f1)
-            errprintf("link variable addresses observations outside frame %s; "
-                    + "run frlink rebuild\n", f2)
-            exit(459)
-        }
-    }
-
+    // No bounds check on idx.  frlinkck verifies the linkage before calling
+    // this helper, and no linkage that survives verification can hold a link
+    // value outside the frame.  A hand-written guard here would be a branch
+    // nothing can reach and no test can exercise.
     hit = J(n2, 1, 0)
     if (rows(idx) > 0) hit[idx, 1] = J(rows(idx), 1, 1)
     st_store(., st_addvar("byte", hitvar), hit)

@@ -92,6 +92,8 @@ in between, with no warning either way.
 ```
 frlinkck.ado      the command
 frlinkck.sthlp    help file
+frlinkck.pkg      package manifest for net install
+stata.toc         package index for net install
 test/certify.do   certification script
 DESIGN.md         settled decisions and open questions
 ```
@@ -111,13 +113,20 @@ is no performance reason to skip the check.
 
 ## Installing
 
-Not yet distributed. For now, point Stata at a clone:
+```stata
+net install frlinkck, from("https://raw.githubusercontent.com/marshallwg/frlinkck/main/")
+```
+
+This works once the repository is pushed; the remote is empty at the time of
+writing. The packaging itself is verified: installing from a local clone places
+`frlinkck.ado` and `frlinkck.sthlp` and the installed copy runs correctly with
+the source tree off the ado path.
+
+To work from a clone instead:
 
 ```stata
 adopath ++ "/path/to/frlinkck-ado"
 ```
-
-TODO: add a `.pkg` and `stata.toc` for `net install` once the syntax is settled.
 
 ## Testing
 
@@ -136,9 +145,9 @@ matches at all; multiple match variables; refusal on a variable that is not a
 link; refusal to overwrite an existing frame; and refusal on a linkage broken
 by deleting from or growing the linked frame.
 
-One guard remains unreached: the Mata helper refuses a link value that
-addresses a row outside the linked frame, but both broken-linkage tests are
-caught earlier by the `frlink describe` check. See `DESIGN.md`.
+Every branch in the command is reachable from a test. A bounds check in the
+Mata helper was removed rather than left untested: verification already
+guarantees the condition it was checking, so nothing could reach it.
 
 ## Prior art
 

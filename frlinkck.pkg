@@ -1,0 +1,28 @@
+v 3
+d frlinkck: report merge-style match dispositions after frlink
+d
+d frlinkck reports, for an existing frlink linkage, the three match
+d dispositions that merge reports and frlink does not: master only,
+d using only, and matched. It can halt a do-file when the dispositions
+d are not the ones claimed, using merge's own assert() keywords, and it
+d can put the unmatched records from either side into a new frame.
+d
+d It takes only the name of the link variable; the frames, the match
+d variables and the match type are read from the link variable itself.
+d
+d Also reports on links created by framerge 1:1 and m:1.
+d
+d KW: data management
+d KW: frames
+d KW: frlink
+d KW: merge
+d
+d Requires Stata 16 or later.
+d
+d Author: Marshall Garland
+d Support: email garlandm@usc.edu
+d
+d Distribution-Date: 20261105
+d
+f frlinkck.ado
+f frlinkck.sthlp
