@@ -1,65 +1,70 @@
 # Design
 
-Open questions first, settled decisions after. Nothing here is implemented.
-
-## Proposed syntax
-
-```
-frlinkck linkvar [, assert(keywords) master(newframe) using(newframe)
-                    nosummary nolabel ]
-```
-
-The command takes the name of a link variable that `frlink` already created.
-It does not take match variables or a frame name, because the link variable
-already carries both.
-
-| Option            | Behavior                                                           |
-| ----------------- | ------------------------------------------------------------------ |
-| `assert()`        | Error and exit if observed dispositions are not those claimed      |
-| `master(name)`    | Create frame `name` holding current-frame rows that did not match  |
-| `using(name)`     | Create frame `name` holding linked-frame rows that did not match   |
-| `nosummary`       | Suppress the table; still store `r()` results and still assert     |
-
-`assert()` takes `merge`'s keywords, not new ones: `match`, `master`,
-`using`, and the combinations `match master`, `match using`. The semantics are
-`merge`'s — the specified keywords are the only dispositions permitted, and any
-observation falling outside them is an error.
-
-Returned in `r()`: `r(N_master)`, `r(N_using)`, `r(N_match)`,
-`r(N_match_using)` (matched rows counted on the using side, which differs from
-`r(N_match)` under `m:1`), `r(N_total_master)`, `r(N_total_using)`.
-
-## Open questions
-
-1. **Command name.** `frlinkck` is current. `frlink2` is rejected: it was
-   `framerge`'s development name, it survives in that package's help file
-   section markers, and it implies a replacement for `frlink` rather than a
-   check on one. Alternatives if `frlinkck` reads poorly: `frlinkchk`,
-   `frlinkreport`.
-2. **Does it write a variable?** `merge` leaves `_merge` behind. Should
-   `frlinkck` offer `gen(newvar)` writing 1/2/3 into the current frame? The
-   using-only rows have no home in the current frame, so a current-frame
-   variable can only ever hold 1 and 3 — which is the same partial picture
-   `frlink` already gives, and arguably not worth the name collision risk.
-   Leaning no.
-3. **Capture frames: rows or keys?** Should `master()` and `using()` hold the
-   full unmatched records, or only the match variables plus a row number? Full
-   records are more useful for inspection and cost memory. Leaning full
-   records, with the match variables ordered first.
-4. **`m:m` and `1:m` links.** `framerge` supports these; `frlink` does not.
-   Whether `frlinkck` handles a `framerge`-created `1:m` link depends on
-   whether that link variable has the same structure. Not investigated.
-5. **Behavior on a stale link.** `frlink` links can go out of date when either
-   frame changes, which is what `frlink rebuild` is for. Should `frlinkck`
-   refuse to report on a link it believes is stale, or report and warn?
-   Leaning refuse, since a disposition table from a stale link is worse than
-   no table.
-
 ## Settled
 
-- The command reports on an existing link. It does not create one. A single
-  command that both links and checks would duplicate `frlink` and would make
-  the check impossible to run on a link created some other way.
-- Option and keyword vocabulary follows `merge` wherever `merge` has a
-  precedent. The point of the package is to make frame linkage behave like the
-  merge users already know.
+- **The command reports on an existing link; it does not create one.** A single
+  command that both links and checks would duplicate `frlink` and could not be
+  run on a link created some other way.
+- **It takes only the link variable.** `frlink` stores the linkage description
+  in the link variable's characteristics — `frlink_fname2` (linked frame),
+  `frlink_vl1`/`frlink_vl2` (match variables), `frlink_mtyp`, `frlink_N2`,
+  `frlink_sig2`. Nothing needs to be re-specified, and nothing can be
+  re-specified inconsistently.
+- **Option and keyword vocabulary follows `merge`.** `assert()` takes `master`,
+  `using`, `match` with `merge`'s semantics. The point of the package is that
+  frame linkage should behave like the merge users already know.
+- **The linkage is verified before the linked frame is read.** Verified by test:
+  an unguarded implementation reports the right count of unmatched rows and the
+  wrong rows, silently. `frlink describe` performs the verification and restores
+  match-variable sort order as a side effect. On failure the command refuses to
+  report rather than reporting and warning. This resolves what was open
+  question 5.
+- **The capture frames are named `nomatchmaster()` and `nomatchusing()`, not
+  `master()` and `using()`.** `using` is a reserved word in Stata's `syntax`
+  parsing, so an option literally named `using()` invites trouble. The longer
+  names also read better at a call site, where the reader needs to know which
+  side the frame came from.
+- **Capture frames hold full records, not just keys.** Copied with the match
+  variables ordered first. On the master side the link variable is dropped,
+  since a link variable outside its master frame addresses nothing. This
+  resolves open question 3.
+- **No `gen()` option writing a `_merge`-style variable.** Resolves open
+  question 2 as "no". The using-only rows have no home in the current frame, so
+  such a variable could only ever hold 1 and 3 — the same partial picture
+  `frlink` already gives. Reconsider only if someone wants it for `tabulate`.
+- **The table prints before `assert()` fires**, so a failure arrives with the
+  numbers that explain it.
+- **Matched is reported twice**, once per side, because the counts differ under
+  `m:1`.
+
+## Open
+
+1. **`framerge`-created links.** `framerge 1:1` and `m:1` are documented
+   aliases of `frlink`, so their link variables should carry the same
+   characteristics and work unchanged. Its `1:m` and `m:m` links have no
+   `frlink` equivalent and probably encode something different. Untested in
+   both cases.
+2. **Genuinely stale links.** The guard against a link variable addressing
+   rows outside the linked frame is written (in the Mata helper) but not
+   exercised by a test. Needs a fixture that adds and deletes observations in
+   the linked frame after linking.
+3. **Large-data behavior.** The approach is one pass over the master frame's
+   link variable plus one allocation the size of the linked frame, so it should
+   be linear and cheap. Unmeasured.
+4. **Distribution.** No `.pkg` or `stata.toc` yet, deliberately: the syntax
+   should settle before anything is installable by URL.
+5. **Command name.** `frlinkck` stands. `frlinkchk` and `frlinkreport` were the
+   alternatives; `frlink2` is rejected for the reasons in the README.
+
+## Record of a disproved claim
+
+An early draft of this design asserted that the link variable holds the linked
+frame's observation number as the frame was ordered when the link was made.
+That is wrong, and the first test written to check it was confounded: the test
+used `webuse txcounty`, where the match variable happens to equal `_n`, so the
+claim could not fail. On a fixture with the linked frame deliberately shuffled,
+the claim failed on 27 of 30 observations.
+
+What is true is narrower and more useful: `frlink` *re-sorts the linked frame*
+by the match variables, and the link variable is the observation number in that
+post-sort order. The distinction is the whole reason step 3 above exists.
