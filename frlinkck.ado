@@ -1,4 +1,4 @@
-*! version 0.1.0  05nov2026  Marshall Garland
+*! version 0.1.1  06nov2026  Marshall Garland
 *! frlinkck: merge-style match dispositions after frlink
 
 * =============================================================================
@@ -56,8 +56,17 @@ program define frlinkck, rclass
     local frame2 : char `lnk'[frlink_fname2]
     local mtype  : char `lnk'[frlink_mtyp]
     local mvars1 : char `lnk'[frlink_vl1]
-    local mvars2 : char `lnk'[frlink_vl2]
     local frame1 = c(frame)
+
+    * frlink records the linked frame's match variables in TWO characteristics,
+    * and the obvious one is not the reliable one.  frlink_vl2 holds them only
+    * when the user restated them inside frame() -- "frame(txcounty countyid)".
+    * Written the shorter and more common way, "frame(txcounty)", frlink_vl2 is
+    * EMPTY and only frlink_vl2p holds the names frlink resolved.  framerge
+    * writes vl2p and never vl2.  So vl2p is the one to read, with no fallback:
+    * -frlink describe- in step 3 itself fails when vl2p is empty, so no linkage
+    * that survives verification can reach this point without it.
+    local mvars2 : char `lnk'[frlink_vl2p]
 
     * -------------------------------------------------------------------------
     * 2. Validate assert() before doing any work, so a typo costs nothing.

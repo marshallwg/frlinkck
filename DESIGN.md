@@ -18,7 +18,7 @@
   wrong rows, silently. `frlink describe` performs the verification and restores
   match-variable sort order as a side effect. On failure the command refuses to
   report rather than reporting and warning. This resolves what was open
-  question 5.
+  question about verification.
 - **The capture frames are named `nomatchmaster()` and `nomatchusing()`, not
   `master()` and `using()`.** `using` is a reserved word in Stata's `syntax`
   parsing, so an option literally named `using()` invites trouble. The longer
@@ -27,9 +27,8 @@
 - **Capture frames hold full records, not just keys.** Copied with the match
   variables ordered first. On the master side the link variable is dropped,
   since a link variable outside its master frame addresses nothing. This
-  resolves open question 3.
-- **No `gen()` option writing a `_merge`-style variable.** Resolves open
-  question 2 as "no". The using-only rows have no home in the current frame, so
+  resolves the question of what the capture frames should hold.
+- **No `gen()` option writing a `_merge`-style variable.** Resolved as "no". The using-only rows have no home in the current frame, so
   such a variable could only ever hold 1 and 3 — the same partial picture
   `frlink` already gives. Reconsider only if someone wants it for `tabulate`.
 - **The table prints and `r()` is stored before `assert()` fires**, so a
@@ -50,6 +49,20 @@
   Verification of the linkage already guarantees that every link value
   addresses a row inside the linked frame, so the check was a branch no test
   could exercise and therefore a branch nothing could trust.
+- **The linked frame's match variables are read from `frlink_vl2p`, not
+  `frlink_vl2`.** `frlink` writes `frlink_vl2` only when the user restates the
+  match variables inside `frame()` — `frame(txcounty countyid)`. Written the
+  shorter and more common way, `frame(txcounty)`, `frlink_vl2` is empty and
+  only `frlink_vl2p` carries the resolved names; `framerge` writes `vl2p` and
+  never `vl2`. Reading `vl2` left the varlist empty, so `order` ran with no
+  arguments and every call with `nomatchmaster()` or `nomatchusing()` failed
+  with `r(100) varlist required` — on a link written exactly as the help file's
+  own example writes it. `r(matchvars_using)` was returning empty for the same
+  reason. Found 2026-11-06. No fallback to `vl2` is kept: a test showed
+  `frlink describe` itself fails when `vl2p` is empty, so verification refuses
+  before the varlist is ever used, and the fallback would have been a branch
+  nothing could reach. Tests 15-17 and 28.
+
 - **Distributed by `net install` from the GitHub repository**, with
   `frlinkck.pkg` and `stata.toc` at the repository root, following the layout
   of the author's other ado packages. Verified by installing from a local clone
@@ -74,7 +87,14 @@
 `frlink_*` characteristics as `frlink`, and `frlinkck` reports on them with no
 change. Measured on the same fixture, `framerge m:1` gave the identical
 3 / 5 / 27 / 15 split. Confirmed with framerge installed from
-sj25-2/dm0115 into a scratch ado directory on 2026-11-05.
+sj25-2/dm0115 into a scratch ado directory on 2026-11-05, and re-confirmed in
+the certification script on 2026-11-06.
+
+The 2026-11-05 check exercised only the counts. Because `framerge` writes
+`frlink_vl2p` and never `frlink_vl2`, the capture frames were in fact broken on
+every `framerge` link at that date, and the check did not reach them. Test 28
+now covers them. Note that `framerge`'s option is `linkvar()`, not
+`generate()`.
 
 ## Measured performance
 

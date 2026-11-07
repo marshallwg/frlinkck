@@ -3,20 +3,32 @@
 Report `merge`-style match dispositions after Stata's `frlink`, and act on them.
 
 ```stata
+. webuse persons, clear
+. frame create txcounty
+. frame txcounty: webuse txcounty, clear
+. frlink m:1 countyid, frame(txcounty) generate(cty)
+(all observations in frame default matched)
+
 . frlinkck cty
 
   Match dispositions for cty (m:1, default -> txcounty)
   ----------------------------------------------------
-  master only          default                    3
-  using only           txcounty                   5
-  matched              default rows              27
-                       txcounty rows             15
+  master only          default                    0
+  using only           txcounty                   4
+  matched              default rows              20
+                       txcounty rows              4
   ----------------------------------------------------
-  total                default                   30
-                       txcounty                  20
+  total                default                   20
+                       txcounty                   8
 
 . frlinkck cty, assert(match) nomatchusing(unused_counties)
+4 observation(s) in frame txcounty matched nothing
+r(9);
 ```
+
+`frlink` reported that every observation in `default` matched, and it was right:
+the four unmatched counties are in the frame it linked to, where `frlink` does
+not look.
 
 ## The problem
 
@@ -134,20 +146,37 @@ adopath ++ "/path/to/frlinkck-ado"
 /Applications/StataNow/StataMP.app/Contents/MacOS/stata-mp -b do test/certify.do
 ```
 
-Fourteen tests, all passing as of 2026-11-05. Every expected count is derived
-by construction rather than recorded from a previous run. Coverage: counts on a
-fresh `m:1` link; that the rows identified are the right rows, not merely the
-right number of them; the hostile-sort case above; that no variable is left
-behind in either frame; `assert()` acceptance and rejection, including every
-permitted abbreviation and the ambiguous `ma` that `merge` also rejects; that
-`r()` survives a failed assertion; a perfect `1:1` link; a link where nothing
-matches at all; multiple match variables; refusal on a variable that is not a
-link; refusal to overwrite an existing frame; and refusal on a linkage broken
-by deleting from or growing the linked frame.
+Twenty-nine tests, all passing as of 2026-11-06 on StataNow 19.5. Every
+expected count is derived by construction rather than recorded from a previous
+run.
 
-Every branch in the command is reachable from a test. A bounds check in the
-Mata helper was removed rather than left untested: verification already
-guarantees the condition it was checking, so nothing could reach it.
+Tests 1-14 cover the arithmetic and the refusals: counts on a fresh `m:1` link;
+that the rows identified are the right rows, not merely the right number of
+them; the hostile-sort case above; that no variable is left behind in either
+frame; `assert()` acceptance and rejection, including every permitted
+abbreviation and the ambiguous `ma` that `merge` also rejects; that `r()`
+survives a failed assertion; a perfect `1:1` link; a link where nothing matches
+at all; multiple match variables; refusal on a variable that is not a link;
+refusal to overwrite an existing frame; and refusal on a linkage broken by
+deleting from or growing the linked frame.
+
+Tests 15-29 sweep the rest of the surface: links written as `frame(name)`
+without restating the match variables, with one key and with two; refusal when
+`frlink_vl2p` is absent; capture frames on a side with nothing unmatched;
+both capture frames in one call; the unknown-link-format guard; the five
+syntax rejections (no argument, string variable, absent variable, two
+variables, invalid frame name); a master frame not called `default`; string
+match variables; all seven `assert()` subsets against known dispositions, plus
+a repeated keyword and an empty `assert()`; the printed table itself, read back
+out of a log and checked line by line, and its suppression under `nosummary`;
+the presence of all eleven stored results; and `framerge` links including the
+capture frames.
+
+One branch is not reachable from a test: the `capture` around the Mata call
+(`frlinkck.ado:134-138`), which exists for a Mata failure that verification and
+the surrounding logic otherwise rule out. A bounds check inside the helper was
+removed rather than left untested, and a fallback for an empty `frlink_vl2p`
+was likewise removed once a test showed `frlink describe` refuses first.
 
 ## Prior art
 
@@ -158,7 +187,8 @@ guarantees the condition it was checking, so nothing could reach it.
   `r(unmatched)`, which is the count `frlink` itself already returns, and offers
   no using-frame count, no disposition table and no assert. Complementary
   rather than overlapping: `framerge 1:1` and `m:1` write the same `frlink_*`
-  characteristics, and `frlinkck` reports on their links unchanged — tested.
+  characteristics, and `frlinkck` reports on their links unchanged, capture
+  frames included — tested.
   Its `1:m` and `m:m` paths could not be tested, because both fail inside
   `framerge` itself with "command confirm_var_cnt is unrecognized"; that helper
   ships in neither the Stata Journal distribution nor the GitHub repository.
