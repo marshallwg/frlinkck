@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 0.1.0  05nov2026}{...}
+{* *! version 0.1.1  06nov2026}{...}
 {vieweralsosee "[D] frlink" "help frlink"}{...}
 {vieweralsosee "[D] frget" "help frget"}{...}
 {vieweralsosee "[D] merge" "help merge"}{...}
@@ -135,27 +135,57 @@ either frame. It does re-sort the linked frame, as any use of the linkage does.
 {marker examples}{...}
 {title:Examples}
 
+{pstd}
+Every command line below is clickable: click it and it runs in your current
+Stata session. Run the setup block first, from the top down. It begins with
+{bf:clear all}, so you can click back to the top of it at any point to start
+over -- which you will need to do before creating a capture frame a second
+time, since {cmd:frlinkck} refuses to overwrite one.
+
+    {hline}
+
 {pstd}Setup{p_end}
-{phang2}{cmd:. webuse persons, clear}{p_end}
-{phang2}{cmd:. frame create txcounty}{p_end}
-{phang2}{cmd:. frame txcounty: webuse txcounty, clear}{p_end}
-{phang2}{cmd:. frlink m:1 countyid, frame(txcounty) generate(cty)}{p_end}
+{phang2}{stata "clear all":. clear all}{p_end}
+{phang2}{stata "webuse persons, clear":. webuse persons, clear}{p_end}
+{phang2}{stata "frame create txcounty":. frame create txcounty}{p_end}
+{phang2}{stata "frame txcounty: webuse txcounty, clear":. frame txcounty: webuse txcounty, clear}{p_end}
+{phang2}{stata "frlink m:1 countyid, frame(txcounty) generate(cty)":. frlink m:1 countyid, frame(txcounty) generate(cty)}{p_end}
 
 {pstd}Report the dispositions{p_end}
-{phang2}{cmd:. frlinkck cty}{p_end}
+{phang2}{stata "frlinkck cty":. frlinkck cty}{p_end}
 
-{pstd}Require a perfect match, and stop the do-file otherwise{p_end}
-{phang2}{cmd:. frlinkck cty, assert(match)}{p_end}
+{pstd}
+Note what {cmd:frlink} reported when the linkage was created: every observation
+in frame {cmd:default} matched. That was true and incomplete. Four counties in
+frame {cmd:txcounty} matched nothing, and that is the count {cmd:frlink} does
+not look for.
 
-{pstd}Permit unmatched persons, but no unused counties{p_end}
-{phang2}{cmd:. frlinkck cty, assert(match master)}{p_end}
+{pstd}
+Require a perfect match and stop otherwise. On these data this is meant to
+fail, with return code 9{p_end}
+{phang2}{stata "frlinkck cty, assert(match)":. frlinkck cty, assert(match)}{p_end}
+
+{pstd}
+Permit unmatched persons but no unused counties. These data have the opposite
+problem, so this fails too{p_end}
+{phang2}{stata "frlinkck cty, assert(match master)":. frlinkck cty, assert(match master)}{p_end}
+
+{pstd}Permit the unused counties, which is the truth about these data{p_end}
+{phang2}{stata "frlinkck cty, assert(match using)":. frlinkck cty, assert(match using)}{p_end}
 
 {pstd}Capture both unmatched sides for inspection{p_end}
-{phang2}{cmd:. frlinkck cty, nomatchmaster(lost_persons) nomatchusing(unused_counties)}{p_end}
-{phang2}{cmd:. frame unused_counties: list}{p_end}
+{phang2}{stata "frlinkck cty, nomatchmaster(lost_persons) nomatchusing(unused_counties)":. frlinkck cty, nomatchmaster(lost_persons) nomatchusing(unused_counties)}{p_end}
+{phang2}{stata "frame unused_counties: list":. frame unused_counties: list}{p_end}
 
-{pstd}Silent check inside a pipeline{p_end}
-{phang2}{cmd:. frlinkck cty, assert(match) nosummary}{p_end}
+{pstd}
+{cmd:lost_persons} was created too, and is empty: no person matched nothing{p_end}
+{phang2}{stata "frame lost_persons: describe":. frame lost_persons: describe}{p_end}
+
+{pstd}Silent check inside a pipeline: no table, same assertion, same {cmd:r()}{p_end}
+{phang2}{stata "frlinkck cty, assert(match using) nosummary":. frlinkck cty, assert(match using) nosummary}{p_end}
+{phang2}{stata "return list":. return list}{p_end}
+
+    {hline}
 
 {marker results}{...}
 {title:Stored results}
